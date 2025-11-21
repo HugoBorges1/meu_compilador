@@ -91,14 +91,15 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 22 "sintatico.y"
+#line 15 "sintatico.y"
 
      int integer;
      float flt;
+     int boolean; /* Adicionado para suportar valores lógicos (0 ou 1) */
      char *name;
      Node *node;
 
-#line 102 "sintatico.tab.h"
+#line 103 "sintatico.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

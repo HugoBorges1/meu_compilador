@@ -3,7 +3,7 @@ ft media
 it total
 
 LO 3 : it a++ OP |
-RE { it @ vetor_media  ]a[ } AD
+	RE { it @ vetor_media  ]a[ } AD
 	total = total + vetor_media ]a[
 |
 
