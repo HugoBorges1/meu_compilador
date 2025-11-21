@@ -70,11 +70,12 @@
 #line 1 "sintatico.y"
 
 #include <stdio.h>
+#include "nodes.h"
 int yyerror(const char *s);
 int yylex(void);
 int errorc = 0;
 
-#line 78 "sintatico.tab.c"
+#line 79 "sintatico.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -569,15 +570,15 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    17,    17,    25,    26,    29,    30,    31,    32,    33,
-      34,    35,    38,    39,    40,    41,    42,    43,    44,    45,
-      48,    49,    50,    51,    52,    53,    56,    57,    58,    61,
-      62,    65,    68,    69,    72,    73,    76,    77,    80,    83,
-      84,    87,    88,    89,    90,    91,    92,    95,    96,    97,
-      98,   101,   104,   105,   106,   107,   110,   111,   112,   113,
-     116,   119,   120,   123,   124,   127,   128,   129,   130,   133,
-     134,   137,   138,   141,   142,   145,   146,   149,   150,   151,
-     154,   155,   156,   159,   160,   161,   162,   163,   166,   167
+       0,    31,    31,    39,    40,    43,    44,    45,    46,    47,
+      48,    49,    52,    53,    54,    55,    56,    57,    58,    59,
+      62,    63,    64,    65,    66,    67,    70,    71,    72,    75,
+      76,    79,    82,    83,    86,    87,    90,    91,    94,    97,
+      98,   101,   102,   103,   104,   105,   106,   109,   110,   111,
+     112,   115,   118,   119,   120,   121,   124,   125,   126,   127,
+     130,   133,   134,   137,   138,   141,   142,   143,   144,   147,
+     148,   151,   152,   155,   156,   159,   160,   163,   164,   165,
+     168,   169,   170,   173,   174,   175,   176,   177,   180,   181
 };
 #endif
 
@@ -1527,17 +1528,17 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* prog: stmts  */
-#line 17 "sintatico.y"
+#line 31 "sintatico.y"
                                 {if (errorc > 0)
                                     printf("%d erro(s) encontrado(s)\n", errorc);
                                 else
                                     printf("Algortimo LIMPO reconhecido\n");
                                 }
-#line 1537 "sintatico.tab.c"
+#line 1538 "sintatico.tab.c"
     break;
 
 
-#line 1541 "sintatico.tab.c"
+#line 1542 "sintatico.tab.c"
 
       default: break;
     }
@@ -1761,7 +1762,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 170 "sintatico.y"
+#line 184 "sintatico.y"
 
 
 int yywrap(){

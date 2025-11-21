@@ -1,4 +1,4 @@
 all:
 	flex lexico.l
 	bison -d sintatico.y
-	clang sintatico.tab.c lex.yy.c -o cmp
+	clang++ -std=c++20 -g -O1 *.c -o cmp
