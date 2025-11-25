@@ -12,8 +12,9 @@ int yylex(void);
 %token<flt> FLOAT
 %token<name> IDENT
 
-%type<node> stmts stmt atrib arit expr term factor prog atstring decl if read loop comblock exprlog termlog faclog perexpr
-%type<node> show scont termst mistl string varshow
+%type<node> stmts stmt atrib arit expr term factor prog atstring decl if loop comblock exprlog termlog faclog perexpr
+%type<node> show scont termst mistl string varshow rdexpr rditem read indice
+%type<name> tpvar cmpl
 
 %start prog
 
@@ -97,16 +98,16 @@ atrib : IDENT[id] '=' BOOL_F {
      $$ = new Store($id,  new ConstBoolean(false));
 }
 
-atrib : IDENT[id] ']'atstring[ats]'[' '=' arit[at] {
-     $$ = new StoreVector($id, $ats, $at);
+atrib : IDENT[id] ']'indice[idx]'[' '=' arit[at] {
+     $$ = new StoreVector($id, $idx, $at);
 }
 
-atrib : IDENT[id] ']'atstring[ats]'[' '=' BOOL_T{
-     $$ = new StoreVector($id, $ats, new ConstBoolean(true));
+atrib : IDENT[id] ']'indice[idx]'[' '=' BOOL_T{
+     $$ = new StoreVector($id, $idx, new ConstBoolean(true));
 }
 
-atrib : IDENT[id] ']'atstring[ats]'[' '=' BOOL_F{
-     $$ = new StoreVector($id, $ats, new ConstBoolean(false));
+atrib : IDENT[id] ']'indice[idx]'[' '=' BOOL_F{
+     $$ = new StoreVector($id, $idx, new ConstBoolean(false));
 }   
 
 loop : LOOP_S INTEGER ':' DECL_IT IDENT ICR LOOP_E '|' comblock '|'
@@ -152,23 +153,46 @@ cmpl : CMP_MAQ
 val : INTEGER
     | FLOAT
     | IDENT
-    | IDENT ']'atstring'['
+    | IDENT ']'indice'['
     ;
 
-read : READ_S '{' rdexpr '}' READ_E 
-     ;
+read : READ_S '{' rdexpr[rdx] '}' READ_E {
+     $$ = new Read($rdx);
+}
 
-rdexpr : tpvar '@' IDENT
-       | tpvar '@' IDENT rdexpr
-       | tpvar '@' IDENT ']' atstring '['
-       | tpvar '@' IDENT ']' atstring '[' rdexpr
-       ;
 
-tpvar : DECL_IT
-      | DECL_FT
-      | DECL_ST
-      | DECL_BL
-      ;
+rdexpr : rditem[itm] {
+     $$ = new ReadSeq($itm);
+}
+
+rdexpr : rdexpr[lst] rditem[itm] {
+     $lst->append($itm);  
+     $$ = $lst;
+}
+
+rditem : tpvar[typ] '@' IDENT[id] {
+     $$ = new ReadVar($typ, $id);
+}
+
+rditem : tpvar[typ] '@' IDENT[id] ']' indice[idx] '[' {
+       $$ = new ReadVector($typ, $id, $idx);
+}
+
+tpvar : DECL_IT {
+     $$ = (char*)"int";
+}
+
+tpvar : DECL_FT {
+     $$ = (char*)"float";
+}
+
+tpvar : DECL_ST {
+     $$ = (char*)"string";
+}
+     
+tpvar : DECL_BL {
+     $$ = (char*)"bool";
+}
 
 show : SHOW_S '{' scont[Sseq] '}' SHOW_E {
      $$ = new Print($Sseq);
@@ -231,13 +255,21 @@ varshow : '%' IDENT[id] ']' atstring[ats] '[' '\\' {
 }
 
 atstring : IDENT[id] {
-     $$ = new ConstString($id);
+     $$ = new ConstString($id); 
 }
 
 atstring : INTEGER[int] {
      $$ = new ConstInteger($int);
 }
+         
+indice : IDENT[id] {
+       $$ = new Load($id);
+}
 
+indice : INTEGER[int] {
+     $$ = new ConstInteger($int);
+}
+     
 arit : expr {
      $$ = $expr; 
 }
@@ -282,8 +314,8 @@ factor : IDENT[id] {
      $$ = new Load($id);
 }
        
-factor : IDENT[id] ']'atstring[ats]'[' {
-     $$ = new LoadVector($id, $ats);
+factor : IDENT[id] ']'indice[idx]'[' {
+     $$ = new LoadVector($id, $idx);
 }
 
 %%

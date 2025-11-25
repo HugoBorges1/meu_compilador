@@ -241,6 +241,60 @@ class Print: public Node {
     }
 };
 
+class ReadSeq: public Node {
+    protected:
+    public:
+        ReadSeq(Node *n) { 
+            this->append(n); 
+        }
+        
+        string astLabel() override {
+            return "seq_read";
+        }
+};
+
+class ReadVector: public Node {
+    protected:
+        string name;
+        string type;
+    public:
+        ReadVector(string type, string name, Node *index) {
+            this->type = type;
+            this->name = name;
+            this->append(index); 
+        }
+
+        string astLabel() override {
+            return "read_array (" + type + ") " + name;
+        }
+};
+
+class ReadVar: public Node {
+    protected:
+        string name;
+        string type;
+    public:
+        ReadVar(string type, string name) {
+            this->type = type;
+            this->name = name;
+        }
+
+        string astLabel() override {
+            return "read_var (" + type + ") " + name;
+        }
+};
+
+class Read: public Node {
+    public:
+        Read(Node *seq) {
+            this->append(seq); 
+        }
+    
+        string astLabel() override {
+            return "read";
+        }
+};
+
 class Stmts: public Node {
     protected:
     public:
@@ -297,7 +351,9 @@ class CompOp: public Node {
             this->append(right);
         }
 
-        string astLabel() override
+        string astLabel() override {
+            return "compare";
+        }
 };
 
 class IfStmt: public Node {
