@@ -13,7 +13,7 @@ int yylex(void);
 %token<name> IDENT
 
 %type<node> stmts stmt atrib arit expr term factor prog atstring decl if loop comblock exprlog termlog faclog perexpr
-%type<node> show scont termst mistl string varshow rdexpr rditem read indice
+%type<node> show scont termst mistl string varshow rdexpr rditem read indice comp val
 %type<name> tpvar cmpl
 
 %start prog
@@ -110,56 +110,114 @@ atrib : IDENT[id] ']'indice[idx]'[' '=' BOOL_F{
      $$ = new StoreVector($id, $idx, new ConstBoolean(false));
 }   
 
-loop : LOOP_S INTEGER ':' DECL_IT IDENT ICR LOOP_E '|' comblock '|'
-     | LOOP_S exprlog LOOP_E '|' comblock '|'
-     | LOOP_S exprlog LOOP_E '|' comblock LOOP_P '|'
-     ;
+loop : LOOP_S INTEGER[lim] ':' DECL_IT IDENT[id] ICR LOOP_E '|' comblock[bc] '|' {
+     $$ = new ForStmt($id, $lim, $bc);
+}
 
-if : IF_S exprlog IF_E '|' comblock '|'
-   | IF_S exprlog IF_E '|' comblock '|' ELSE_S comblock ELSE_E
-   ;
+loop : LOOP_S exprlog[exl] LOOP_E '|' comblock[bc] '|' {
+     $$ = new LoopStmt($exl, $bc);
+}
 
-comblock : comblock stmt
-         | stmt
-         ;
+loop : LOOP_S exprlog[cond] LOOP_E '|' comblock[bc] LOOP_P '|' {
+     $$ = new LoopStmt($cond, $bc);
+}
 
-exprlog : termlog
-        | exprlog CMP_OR termlog
-        ;
+if : IF_S exprlog[cond] IF_E '|' comblock[bc] '|' {
+   $$ = new IfStmt($cond, $bc);
+}
 
-termlog : faclog
-        | termlog CMP_AND faclog
-        ;
+if : IF_S exprlog[cond] IF_E '|' comblock[bT] '|' ELSE_S comblock[bF] ELSE_E {
+   $$ = new IfStmt($cond, $bT, $bF);
+}
 
-faclog : perexpr
-       | comp
-       ;
+comblock : comblock[lst] stmt {
+     $lst->append($stmt);
+     $$ = $lst;
+}
 
-comp : perexpr cmpl perexpr
-     ;
+comblock : stmt {
+     $$ = new Stmts($stmt);
+}
 
-perexpr : val
-        | '(' exprlog ')'
-        ;
+exprlog : termlog { 
+     $$ = $1;
+}
 
-cmpl : CMP_MAQ
-     | CMP_MEQ
-     | CMP_IG
-     | CMP_MAI
-     | CMP_MEI
-     | CMP_DIF
-     ;
+exprlog : exprlog[e1] CMP_OR termlog[e2] {
+     $$ = new CompOp($e1, "OR", $e2);
+}
 
-val : INTEGER
-    | FLOAT
-    | IDENT
-    | IDENT ']'indice'['
-    ;
+termlog : faclog { 
+     $$ = $1; 
+}
+
+termlog : termlog[t1] CMP_AND faclog[f1] {
+     $$ = new CompOp($t1, "AND", $f1);
+}
+
+faclog : perexpr { 
+     $$ = $1; 
+}
+
+faclog : comp[cmp] { 
+     $$ = $cmp;
+}
+
+comp : perexpr[e1] cmpl[op] perexpr[e2] {
+     $$ = new CompOp($e1, $op, $e2);
+}
+
+perexpr : val[vl] { 
+     $$ = $vl; 
+}
+
+perexpr : '(' exprlog[exl] ')' { 
+     $$ = $exl; 
+}
+
+cmpl : CMP_MAQ { 
+     $$ = (char*)">"; 
+}
+
+cmpl : CMP_MEQ { 
+     $$ = (char*)"<"; 
+}
+
+cmpl : CMP_IG  { 
+     $$ = (char*)"=="; 
+}
+
+cmpl : CMP_MAI { 
+     $$ = (char*)">="; 
+}
+
+cmpl : CMP_MEI { 
+     $$ = (char*)"<="; 
+}
+
+cmpl : CMP_DIF { 
+     $$ = (char*)"!="; 
+}
+
+val : INTEGER[i] { 
+    $$ = new ConstInteger($i); 
+}
+
+val : FLOAT[f] { 
+    $$ = new ConstDouble($f); 
+}
+
+val : IDENT[id] { 
+    $$ = new Load($id); 
+}
+
+val : IDENT[id] ']' indice[idx] '[' { 
+    $$ = new LoadVector($id, $idx); 
+}
 
 read : READ_S '{' rdexpr[rdx] '}' READ_E {
      $$ = new Read($rdx);
 }
-
 
 rdexpr : rditem[itm] {
      $$ = new ReadSeq($itm);

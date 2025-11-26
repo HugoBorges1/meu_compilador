@@ -374,6 +374,19 @@ class IfStmt: public Node {
         }
 };
 
+class ForStmt: public Node {
+    public:
+        ForStmt(string iteratorName, int limit, Node *body) {
+            this->append(new VarDecl(iteratorName, "int"));
+            this->append(new ConstInteger(limit));
+            this->append(body);
+        }
+
+        string astLabel() override {
+            return "ForLoop";
+        }
+};
+
 class LoopStmt: public Node {
     public:
         LoopStmt(Node *cond, Node *block) {
