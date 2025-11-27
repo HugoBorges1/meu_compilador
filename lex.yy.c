@@ -1092,12 +1092,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 83 "lexico.l"
+#line 82 "lexico.l"
 { printf("Caractere não presente no alfabeto %c\n", yytext[0] ); }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 85 "lexico.l"
+#line 84 "lexico.l"
 ECHO;
 	YY_BREAK
 #line 1104 "lex.yy.c"
@@ -2117,7 +2117,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 85 "lexico.l"
+#line 84 "lexico.l"
 
 
 int yyerror(const char *s) {

@@ -370,13 +370,13 @@ varshow : '%' IDENT[id] ']' atstring[ats] '[' '\\' {
      if (memory_vector_string.count($id) && memory_vector_string[$id].count(idx)) {
           string val = memory_vector_string[$id][idx];
           $$ = new LoadVector($id, $ats, idx, val, true);
-     }
-
-     else if (memory_vector_int.count($id) && memory_vector_int[$id].count(idx)) {
+     } else if (memory_vector_int.count($id) && memory_vector_int[$id].count(idx)) {
           int val = memory_vector_int[$id][idx];
           $$ = new LoadVector($id, $ats, idx, val, true);
-     }
-     else {
+     } else if (memory_vector_bool.count($id) && memory_vector_bool[$id].count(idx)) {
+          bool val = memory_vector_bool[$id][idx];
+          $$ = new LoadVector($id, $ats, idx, val, true);
+     } else {
           $$ = new LoadVector($id, $ats, idx, 0, false);
      }
 }

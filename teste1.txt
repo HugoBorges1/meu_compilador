@@ -6,4 +6,6 @@ booleanoVet ]0[ = NOTTHELIES
 
 booleanoVet ]1[ = NOTTHETRUTH
 
-booleanoVet ]2[ = NOTTHELIES
+booleanoVet ]1[ = NOTTHELIES
+
+SH {%booleanoVet ]1[\} OW

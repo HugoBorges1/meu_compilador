@@ -217,6 +217,8 @@ class VectorDecl: public Node {
         string getName() { return name; }
 
         string getType() { return type; }
+        
+        int getSize() { return size; }
 };
 
 class StoreVector: public Node {
@@ -229,9 +231,7 @@ class StoreVector: public Node {
             this->name = name;
             this->index = resolvedIdx;
             this->hasIndex = hasIdx;
-            
-            this->append(idxNode);
-            this->append(expr);   
+            this->append(expr);
         }
 
         string astLabel() override {
@@ -242,6 +242,7 @@ class StoreVector: public Node {
         }
 
         string getName() { return name; }
+        int getIndex() { return index; }
 };
 
 class LoadVector: public Node {
@@ -250,8 +251,13 @@ class LoadVector: public Node {
         int resolvedIndex;
         int resolvedInt;
         string resolvedStr; 
+        bool resolvedBool;
+        
+  
         bool isString;      
+        bool isBool;       
         bool hasInfo;
+
     public:
         LoadVector(string name, Node *index){
             this->name = name;
@@ -263,11 +269,10 @@ class LoadVector: public Node {
             this->resolvedIndex = idxVal;
             this->resolvedInt = val;
             this->isString = false;
+            this->isBool = false;
             this->hasInfo = info;
             
-            if (info) {
-                this->append(new ConstInteger(val));
-            }
+            if (info) this->append(new ConstInteger(val));
         }
 
         LoadVector(string name, Node *index, int idxVal, string val, bool info){
@@ -275,28 +280,31 @@ class LoadVector: public Node {
             this->resolvedIndex = idxVal;
             this->resolvedStr = val;
             this->isString = true;
+            this->isBool = false;
             this->hasInfo = info;
 
-            if (info) {
-                this->append(new ConstString(val));
-            }
+            if (info) this->append(new ConstString(val));
+        }
+
+        LoadVector(string name, Node *index, int idxVal, bool val, bool info){
+            this->name = name;
+            this->resolvedIndex = idxVal;
+            this->resolvedBool = val;
+            this->isString = false;
+            this->isBool = true; 
+            this->hasInfo = info;
+            if (info) this->append(new ConstBoolean(val));
         }
 
         string astLabel() override {
             return "load_array " + name + " ]" + to_string(resolvedIndex) + "[";
         }
 
-        string getName() { 
-            return name; 
-        }
+        string getName() { return name; }
+        int getIndex() { return resolvedIndex; }
 
-        int getIntValue() override {
-            return (hasInfo && !isString) ? resolvedInt : 0;
-        }
-
-        string getStringValue() override {
-            return (hasInfo && isString) ? resolvedStr : "";
-        }
+        int getIntValue() override { return (hasInfo && !isString && !isBool) ? resolvedInt : 0; }
+        string getStringValue() override { return (hasInfo && isString) ? resolvedStr : ""; }
 };
 
 class BinaryOp: public Node {
@@ -518,6 +526,7 @@ class Program: public Node {
 class SemanticVarDecl {
 private:
     map<string, string> declaredVars;
+    map<string, int> declaredArraySizes; 
 
     string inferType(Node* n) {
         if (dynamic_cast<ConstBoolean*>(n)) return "bool";
@@ -566,6 +575,7 @@ public:
                 cerr << "Erro: Array '" << vecDecl->getName() << "' ja declarado.\n";
             } else {
                 declaredVars[vecDecl->getName()] = vecDecl->getType();
+                declaredArraySizes[vecDecl->getName()] = vecDecl->getSize();
             }
         }
 
@@ -575,10 +585,21 @@ public:
                 cerr << "Erro Semantico (Linha " << load->getLineNo() << "): Variavel '" << load->getName() << "' usada mas nao declarada.\n";
             }
         }
+        
         LoadVector *loadVec = dynamic_cast<LoadVector*>(n);
         if (loadVec != NULL){
             if (declaredVars.count(loadVec->getName()) == 0) {
                 cerr << "Erro: Tentativa de ler array '" << loadVec->getName() << "' nao declarado.\n";
+            } else {
+                if (declaredArraySizes.count(loadVec->getName())) {
+                    int size = declaredArraySizes[loadVec->getName()];
+                    int idx = loadVec->getIndex();
+                    if (idx < 0 || idx >= size) {
+                        cerr << "Erro Semantico (Linha " << loadVec->getLineNo() << "): "
+                             << "Indice " << idx << " fora dos limites do vetor '" << loadVec->getName() 
+                             << "' (Tamanho: " << size << ").\n";
+                    }
+                }
             }
         }
 
@@ -612,17 +633,28 @@ public:
             if (declaredVars.count(varName) == 0) {
                 cerr << "Erro: Tentativa de atribuir em array '" << varName << "' nao declarado.\n";
             } else {
+                if (declaredArraySizes.count(varName)) {
+                    int size = declaredArraySizes[varName];
+                    int idx = storeVec->getIndex();
+                    if (idx < 0 || idx >= size) {
+                        cerr << "Erro Semantico (Linha " << storeVec->getLineNo() << "): "
+                             << "Indice " << idx << " fora dos limites do vetor '" << varName 
+                             << "' (Tamanho: " << size << ").\n";
+                    }
+                }
+
                 string varType = declaredVars[varName];
                 bool isBoolTarget = (varType == "bool" || varType == "boolean" || varType == "bl");
 
                 if (isBoolTarget) {
-                    if (storeVec->getChildren().size() >= 2) {
-                        Node* expr = storeVec->getChildren()[1]; 
+                   
+                    if (!storeVec->getChildren().empty()) {
+                        Node* expr = storeVec->getChildren()[0];
                         string exprType = inferType(expr);
 
                         if (exprType != "bool") {
                             cerr << "Erro Semantico (Linha " << storeVec->getLineNo() << "): "
-                                 << "Vetor booleano '" << varName << "' so pode receber valores booleanos.\n";
+                                << "Vetor booleano '" << varName << "' so pode receber valores booleanos.\n";
                         }
                     }
                 }
