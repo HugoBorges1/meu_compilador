@@ -10,8 +10,12 @@ std::map<std::string, int> memory_int;
 std::map<std::string, std::map<int, int>> memory_vector_int;
 std::map<std::string, std::string> memory_string;
 std::map<std::string, std::map<int, std::string>> memory_vector_string;
-std::set<std::string> declared_vars;
+std::map<std::string, double> memory_float; 
+std::map<std::string, std::map<int, double>> memory_vector_float;
 std::map<std::string, std::map<int, bool>> memory_vector_bool;
+
+std::set<std::string> declared_vars;
+std::set<std::string> declared_floats;
 
 %}
 
@@ -76,6 +80,7 @@ decl : DECL_ST IDENT[name] ']' INTEGER[size] '[' {
 }
 
 decl : DECL_FT IDENT[name] ']' INTEGER[size] '[' {
+     declared_floats.insert($name);
      declared_vars.insert($name);
      $$ = new VectorDecl($name, $size, "float");
 }
@@ -91,6 +96,7 @@ decl : DECL_IT IDENT[name] {
 }
 
 decl : DECL_FT IDENT[name] {
+     declared_floats.insert($name);
      declared_vars.insert($name);
      $$ = new VarDecl($name, "float");
 }
@@ -109,7 +115,12 @@ atrib : IDENT[id] '=' arit[at] {
      string sVal = $at->getStringValue();
      if (sVal != "") {
           memory_string[$id] = sVal;
-     } else {
+     } 
+     else if (declared_floats.count($id)) {
+          double val = $at->getDoubleValue();
+          memory_float[$id] = val;
+     }
+     else {
           int val = $at->getIntValue(); 
           memory_int[$id] = val;
      }
@@ -127,11 +138,16 @@ atrib : IDENT[id] '=' BOOL_F {
 atrib : IDENT[id] ']'indice[idx]'[' '=' arit[at] {
      int indexVal = $idx->getIntValue();
      string strVal = $at->getStringValue();
-
+     
      if (strVal != "") {
           memory_vector_string[$id][indexVal] = strVal;
           $$ = new StoreVector($id, $idx, $at, indexVal, true);
      } 
+     else if (declared_floats.count($id)) {
+          double val = $at->getDoubleValue();
+          memory_vector_float[$id][indexVal] = val;
+          $$ = new StoreVector($id, $idx, $at, indexVal, true);
+     }
      else {
           int intVal = $at->getIntValue();
           memory_vector_int[$id][indexVal] = intVal;
@@ -249,12 +265,15 @@ val : FLOAT[f] {
     $$ = new ConstDouble($f); 
 }
 
-/* Substitua a regra val : IDENT (linha ~50) */
 val : IDENT[id] { 
     if (declared_vars.count($id)) {
         if (memory_string.count($id)) {
              $$ = new Load($id, memory_string[$id], true);
         }
+        else if (memory_float.count($id)) {
+             double val = memory_float[$id];
+             $$ = new Load($id, val, true); 
+        } 
         else if (memory_int.count($id)) {
              $$ = new Load($id, memory_int[$id], true);
         } 
@@ -349,7 +368,6 @@ mistl : mistl[msl] string[str] varshow[vsh] {
       $$ = $msl;
 }
 
-
 string : atstring[ats] {
      $$ = new PrintSeq($ats);
 }
@@ -358,7 +376,6 @@ string : string[str] atstring[ats] {
      $str->append($ats);
      $$ = $str;
 }
-
 
 varshow : '%' IDENT[id] '\\' {
      $$ = new Load($id);
@@ -442,6 +459,12 @@ factor : IDENT[id] {
         if (memory_string.count($id)) {
              $$ = new Load($id, memory_string[$id], true);
         }
+        /* --- CORREÇÃO: ADICIONAR ESTE BLOCO QUE FALTOU --- */
+        else if (memory_float.count($id)) {
+             double val = memory_float[$id];
+             $$ = new Load($id, val, true);
+        }
+        /* ------------------------------------------------ */
         else if (memory_int.count($id)) {
              $$ = new Load($id, memory_int[$id], true);
         } 
@@ -461,7 +484,10 @@ factor : IDENT[id] ']'indice[idx]'[' {
           string val = memory_vector_string[$id][indexVal];
           $$ = new LoadVector($id, $idx, indexVal, val, true);
      }
-
+     else if (memory_vector_float.count($id) && memory_vector_float[$id].count(indexVal)) {
+          double val = memory_vector_float[$id][indexVal];
+          $$ = new LoadVector($id, $idx, indexVal, val, true);
+     }
      else if (memory_vector_int.count($id) && memory_vector_int[$id].count(indexVal)) {
           int val = memory_vector_int[$id][indexVal];
           $$ = new LoadVector($id, $idx, indexVal, val, true);

@@ -1,11 +1,9 @@
-bl boolano
+ft varfloat
 
-bl booleanoVet ]3[
+ft vetfloat ]2[
 
-booleanoVet ]0[ = NOTTHELIES
+varfloat = 10;56
 
-booleanoVet ]1[ = NOTTHETRUTH
+vetfloat ]0[ = 11;1
 
-booleanoVet ]1[ = NOTTHELIES
-
-SH {%booleanoVet ]1[\} OW
+vetfloat ]1[ = vetfloat ]0[ + varfloat

@@ -44,6 +44,10 @@ public:
         return ""; 
     }
 
+    virtual double getDoubleValue() { 
+        return 0.0; 
+    }
+
     friend class Program;
 };
 
@@ -79,6 +83,10 @@ class ConstInteger: public Node {
         int getIntValue() override {
             return value;
         }
+
+        double getDoubleValue() override { 
+            return (double)value; 
+        }
 };
 
 class ConstDouble: public Node {
@@ -91,6 +99,10 @@ class ConstDouble: public Node {
 
         string astLabel() override {
             return to_string(value);
+        }
+
+        double getDoubleValue() override { 
+            return value; 
         }
 };
 
@@ -134,8 +146,11 @@ class Load: public Node {
     protected:
         string name;
         int currentVal; 
+        double currentDouble;
         string currentStr; 
+        
         bool isString;    
+        bool isDouble;   
         bool hasValue;  
     public:
         Load(string name, int val = 0, bool hasVal = false){
@@ -143,6 +158,9 @@ class Load: public Node {
             this->currentVal = val;
             this->hasValue = hasVal;
             this->isString = false;
+            this->isDouble = false;
+            
+            if (hasVal) this->append(new ConstInteger(val));
         }
 
         Load(string name, string val, bool hasVal = false){
@@ -150,29 +168,37 @@ class Load: public Node {
             this->currentStr = val;
             this->hasValue = hasVal;
             this->isString = true;
+            this->isDouble = false;
+
+            if (hasVal) this->append(new ConstString(val));
+        }
+
+        Load(string name, double val, bool hasVal = false){
+            this->name = name;
+            this->currentDouble = val;
+            this->hasValue = hasVal;
+            this->isString = false;
+            this->isDouble = true; 
+
+            if (hasVal) this->append(new ConstDouble(val));
         }
 
     string astLabel() override {
-        if (hasValue) {
-            if (isString)
-                return name + "\\n(" + currentStr + ")";
-            else
-                return name + "\\n(" + to_string(currentVal) + ")";
-        }
-        else
-            return name;
-    }
-    
-    string getName() {
         return name;
     }
-
-    string getStringValue() override {
-        return (hasValue && isString) ? currentStr : "";
+    
+    string getName() { 
+        return name; 
     }
 
-    int getIntValue() override {
-        return (hasValue && !isString) ? currentVal : 0;
+    string getStringValue() override { 
+        return (hasValue && isString) ? currentStr : ""; 
+    }
+    int getIntValue() override { 
+        return (hasValue && !isString && !isDouble) ? currentVal : 0; 
+    }
+    double getDoubleValue() override { 
+        return (hasValue && isDouble) ? currentDouble : 0.0; 
     }
 };
 
@@ -214,11 +240,17 @@ class VectorDecl: public Node {
             return "DeclVector " + type + ":" + name + "]" + to_string(size) + "[";
         }
 
-        string getName() { return name; }
+        string getName() { 
+            return name; 
+        }
 
-        string getType() { return type; }
+        string getType() { 
+            return type; 
+        }
         
-        int getSize() { return size; }
+        int getSize() { 
+            return size; 
+        }
 };
 
 class StoreVector: public Node {
@@ -241,8 +273,12 @@ class StoreVector: public Node {
             return "store_array " + name;
         }
 
-        string getName() { return name; }
-        int getIndex() { return index; }
+        string getName() { 
+            return name; 
+        }
+        int getIndex() { 
+            return index; 
+        }
 };
 
 class LoadVector: public Node {
@@ -250,12 +286,13 @@ class LoadVector: public Node {
         string name;
         int resolvedIndex;
         int resolvedInt;
+        double resolvedDouble;
         string resolvedStr; 
         bool resolvedBool;
-        
   
         bool isString;      
-        bool isBool;       
+        bool isBool;  
+        bool isDouble;     
         bool hasInfo;
 
     public:
@@ -286,6 +323,18 @@ class LoadVector: public Node {
             if (info) this->append(new ConstString(val));
         }
 
+        LoadVector(string name, Node *index, int idxVal, double val, bool info){
+            this->name = name;
+            this->resolvedIndex = idxVal;
+            this->resolvedDouble = val;
+            this->isString = false;
+            this->isBool = false;
+            this->isDouble = true;
+            this->hasInfo = info;
+            
+            if (info) this->append(new ConstDouble(val));
+        }
+
         LoadVector(string name, Node *index, int idxVal, bool val, bool info){
             this->name = name;
             this->resolvedIndex = idxVal;
@@ -300,11 +349,24 @@ class LoadVector: public Node {
             return "load_array " + name + " ]" + to_string(resolvedIndex) + "[";
         }
 
-        string getName() { return name; }
-        int getIndex() { return resolvedIndex; }
+        string getName() { 
+            return name; 
+        }
 
-        int getIntValue() override { return (hasInfo && !isString && !isBool) ? resolvedInt : 0; }
-        string getStringValue() override { return (hasInfo && isString) ? resolvedStr : ""; }
+        int getIndex() { 
+            return resolvedIndex; 
+        }
+
+        int getIntValue() override { 
+            return (hasInfo && !isString && !isBool) ? resolvedInt : 0; 
+        }
+
+        string getStringValue() override { 
+            return (hasInfo && isString) ? resolvedStr : ""; 
+        }
+        double getDoubleValue() override { 
+            return (hasInfo && isDouble) ? resolvedDouble : 0.0; 
+        }
 };
 
 class BinaryOp: public Node {
@@ -333,6 +395,17 @@ class BinaryOp: public Node {
             if (oper == '/') return v2 != 0 ? v1 / v2 : 0;
             return 0;
         }
+
+        double getDoubleValue() override {
+            double v1 = children[0]->getDoubleValue();
+            double v2 = children[1]->getDoubleValue();
+            
+            if (oper == '+') return v1 + v2;
+            if (oper == '-') return v1 - v2;
+            if (oper == '*') return v1 * v2;
+            if (oper == '/') return v2 != 0.0 ? v1 / v2 : 0.0;
+        return 0.0;
+    }
 
         string getStringValue() override {
             if (oper == '+') {

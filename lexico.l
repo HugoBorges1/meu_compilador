@@ -1,5 +1,8 @@
 %{
 #include <stdio.h>
+#include <string>
+#include <iostream>
+#include <algorithm>
 
 class Node;
 
@@ -70,8 +73,10 @@ int errorcount = 0;
 }
 
 [0-9]+\;[0-9]+  { 
-    yylval.flt = atof(yytext);
-    return FLOAT; 
+    std::string s = yytext;
+    std::replace(s.begin(), s.end(), ';', '.');
+    yylval.flt = atof(s.c_str()); 
+    return FLOAT;
 }
 
 [a-zA-Z_][a-zA-Z_0-9]*  { 
@@ -109,7 +114,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    //yydebug = 1;
     yyparse();
 
     if (yyin)
