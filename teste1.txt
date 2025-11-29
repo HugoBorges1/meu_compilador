@@ -1,8 +1,12 @@
 it inteiroVet ]3[
 
-LO 5 : it a++ OP |
-    inteiroVet ]a[ = 10 + a
-|
+RE { it @ inteiroVet]2[} AD
+
+I inteiroVet]2[ MAIOR_QUE 10 F |
+    inteiroVet ]1[ = 10 + inteiroVet ]2[
+| EL 
+    inteiroVet ]0[ = 10 + inteiroVet ]2[ 
+SE
 
 RE { it @ inteiroVet ]0[ } AD
 
