@@ -304,21 +304,33 @@ class VectorDecl: public Node {
 class StoreVector: public Node {
     protected:
         string name;
-        int index;     
+
+        int index;
+        int readCount;
+        int loopChangeCount;
+        int ifChangeCount;
+
         bool hasIndex; 
     public:
-        StoreVector(string name, Node *idxNode, Node *expr, int resolvedIdx = 0, bool hasIdx = false){
+        StoreVector(string name, Node *idxNode, Node *expr, int resolvedIdx, bool hasIdx, int r=0, int l=0, int i=0){
             this->name = name;
             this->index = resolvedIdx;
             this->hasIndex = hasIdx;
+            this->readCount = r;
+            this->loopChangeCount = l;
+            this->ifChangeCount = i;
+            
             this->append(expr);
         }
 
         string astLabel() override {
-            if (hasIndex) {
-                return "StoreVector " + name + " ]" + to_string(index) + "[";
-            }
-            return "StoreVector " + name;
+            string label = "StoreVector " + name;
+            if (hasIndex) label += " ]" + to_string(index) + "[";
+            if (readCount > 0) label += " | changedByRead(" + to_string(readCount) + ")";
+            if (loopChangeCount > 0) label += " | changedByFor(" + to_string(loopChangeCount) + ")";
+            if (ifChangeCount > 0) label += " | changedByIF(" + to_string(ifChangeCount) + ")";
+
+            return label;
         }
 
         string getName() { 
@@ -758,7 +770,7 @@ public:
             check(c);
         } 
 
-        VarDecl *decl = dynamic_cast<VarDecl*>(n);
+        VarDecl decl = dynamic_cast<VarDecl>(n);
         if (decl != NULL){
             if (declaredVars.count(decl->getName()) > 0) {
                 cerr << "Erro Semantico: Variavel '" << decl->getName() << "' ja foi declarada anteriormente.\n";
@@ -767,7 +779,7 @@ public:
             }
         }
 
-        VectorDecl *vecDecl = dynamic_cast<VectorDecl*>(n);
+        VectorDecl vecDecl = dynamic_cast<VectorDecl>(n);
         if (vecDecl != NULL){
             if (declaredVars.count(vecDecl->getName()) > 0) {
                 cerr << "Erro: Array '" << vecDecl->getName() << "' ja declarado.\n";
@@ -777,14 +789,14 @@ public:
             }
         }
 
-        Load *load = dynamic_cast<Load*>(n);
+        Load load = dynamic_cast<Load>(n);
         if (load != NULL){
             if (declaredVars.count(load->getName()) == 0) {
                 cerr << "Erro Semantico (Linha " << load->getLineNo() << "): Variavel '" << load->getName() << "' usada mas nao declarada.\n";
             }
         }
         
-        LoadVector *loadVec = dynamic_cast<LoadVector*>(n);
+        LoadVector loadVec = dynamic_cast<LoadVector>(n);
         if (loadVec != NULL){
             if (declaredVars.count(loadVec->getName()) == 0) {
                 cerr << "Erro: Tentativa de ler array '" << loadVec->getName() << "' nao declarado.\n";
@@ -801,7 +813,7 @@ public:
             }
         }
 
-        Store *store = dynamic_cast<Store*>(n);
+        Store store = dynamic_cast<Store>(n);
         if (store != NULL){
             string varName = store->getName();
              if (declaredVars.count(varName) == 0) {
@@ -825,7 +837,7 @@ public:
             }
         }
 
-        StoreVector *storeVec = dynamic_cast<StoreVector*>(n);
+        StoreVector storeVec = dynamic_cast<StoreVector>(n);
         if (storeVec != NULL){
             string varName = storeVec->getName();
             if (declaredVars.count(varName) == 0) {
