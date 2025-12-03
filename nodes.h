@@ -272,7 +272,7 @@ class Store: public Node {
 
         string astLabel() override {
             string r;
-            r.append("store ");
+            r.append("StoreVar ");
             r.append(name);
             return r;
         }
@@ -936,7 +936,7 @@ public:
         VectorDecl *vecDecl = dynamic_cast<VectorDecl*>(n);
         if (vecDecl != NULL){
             if (declaredVars.count(vecDecl->getName()) > 0) {
-                cerr << "Erro: Array '" << vecDecl->getName() << "' ja declarado.\n";
+                cerr << "Erro semantico: Array '" << vecDecl->getName() << "' ja declarado.\n";
             } else {
                 declaredVars[vecDecl->getName()] = vecDecl->getType();
                 declaredArraySizes[vecDecl->getName()] = vecDecl->getSize();
@@ -953,7 +953,7 @@ public:
         LoadVector *loadVec = dynamic_cast<LoadVector*>(n);
         if (loadVec != NULL){
             if (declaredVars.count(loadVec->getName()) == 0) {
-                cerr << "Erro: Tentativa de ler array '" << loadVec->getName() << "' nao declarado.\n";
+                cerr << "Erro semantico: Tentativa de ler array '" << loadVec->getName() << "' nao declarado.\n";
             } else {
                 if (declaredArraySizes.count(loadVec->getName())) {
                     int size = declaredArraySizes[loadVec->getName()];
@@ -980,7 +980,7 @@ public:
                 if (varType == "int" && expr != NULL) {
                     string exprType = inferType(expr);
                     if (exprType == "float") {
-                        cerr << "Warning (Linha " << store->getLineNo() << "): "
+                        cerr << "Erro semantico (Linha " << store->getLineNo() << "): "
                              << "Atribuicao de float para a variavel inteira '" << varName 
                              << "'. O valor sera truncado.\n";
                         
@@ -1030,7 +1030,7 @@ public:
                     string exprType = inferType(expr);
                     
                     if (exprType == "float") {
-                        cerr << "Warning (Linha " << storeVec->getLineNo() << "): "
+                        cerr << "Erro semantico (Linha " << storeVec->getLineNo() << "): "
                              << "Atribuicao de float para o vetor de inteiros '" << varName 
                              << "'. O valor sera truncado.\n";
                     }
@@ -1059,9 +1059,9 @@ public:
     }
 
     void printFoundVars(){
-        cout << "--- Tabela de Simbolos ---\n";
+        cout << "\nVariáveis e vetores declarados\n\n";
         for(auto const& [name, type] : declaredVars) {
-            cout << "Declarada: " << name << " (" << type << ")\n";
+            cout << name << " (" << type << ")\n";
         }
     }
 };
