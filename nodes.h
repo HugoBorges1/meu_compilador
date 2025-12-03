@@ -87,7 +87,7 @@ class ConstInteger: public Node {
         double getDoubleValue() override { 
             return (double)value; 
         }
-};
+}; // Fechamento da classe APENAS AQUI
 
 class ConstDouble: public Node {
     protected:
@@ -243,11 +243,18 @@ class Load: public Node {
 
     int getIntValue() override { 
         return (hasValue && !isString && !isDouble && !isBool) ? currentVal : 0; 
+
     }
 
     double getDoubleValue() override { 
-        return (hasValue && isDouble) ? currentDouble : 0.0;
-    }
+    // Se for Double, retorna o valor double
+    if (hasValue && isDouble) return currentDouble;
+    
+    // CORREÇÃO: Se for Int, converte e retorna o valor int como double
+    if (hasValue && !isString && !isBool) return (double)currentVal;
+    
+    return 0.0; 
+}
 };
 
 class Store: public Node {
@@ -380,6 +387,7 @@ class LoadVector: public Node {
             this->ifChangeCount = ifs;
             this->isString = false;
             this->isBool = false;
+            this->isDouble = false;
             
             if (info) this->append(new ConstInteger(val));
         }
@@ -394,6 +402,7 @@ class LoadVector: public Node {
             this->ifChangeCount = ifs;
             this->isString = true;
             this->isBool = false;
+            this->isDouble = false;
 
             if (info) this->append(new ConstString(val));
         }
@@ -421,6 +430,7 @@ class LoadVector: public Node {
             this->ifChangeCount = ifs;
             this->isString = false;
             this->isBool = true; 
+            this->isDouble = false;
             this->hasInfo = info;
 
             if (info) this->append(new ConstBoolean(val));
@@ -452,16 +462,22 @@ class LoadVector: public Node {
             return resolvedIndex; 
         }
 
+        /* Em nodes.h, classe LoadVector */
         int getIntValue() override { 
-            return (hasInfo && !isString && !isBool) ? resolvedInt : 0; 
+            return (hasInfo && !isString && !isDouble && !isBool) ? resolvedInt : 0;
         }
-
         string getStringValue() override { 
             return (hasInfo && isString) ? resolvedStr : ""; 
         }
         double getDoubleValue() override { 
-            return (hasInfo && isDouble) ? resolvedDouble : 0.0; 
-        }
+    // Se for Double
+        if (hasInfo && isDouble) return resolvedDouble;
+        
+        // CORREÇÃO: Se for Int, converte
+        if (hasInfo && !isString && !isBool) return (double)resolvedInt;
+        
+        return 0.0; 
+}
 };
 
 class BinaryOp: public Node {
@@ -500,17 +516,38 @@ class BinaryOp: public Node {
             if (oper == '+') return v1 + v2;
             if (oper == '-') return v1 - v2;
             if (oper == '*') return v1 * v2;
-            if (oper == '/') return v2 != 0.0 ? v1 / v2 : 0.0;
+            if (oper == '/') return (v2 != 0.0) ? (v1 / v2) : 0.0;
 
             return 0.0;
         }
 
         string getStringValue() override {
-            if (oper == '+') {
-                return children[0]->getStringValue() + children[1]->getStringValue();
+        if (oper == '+') {
+            // Tenta pegar string dos filhos
+            string s1 = children[0]->getStringValue();
+            string s2 = children[1]->getStringValue();
+            
+            // Verifica se os filhos são realmente strings (não vazios)
+            bool isS1String = (s1 != "");
+            bool isS2String = (s2 != "");
+
+            // REGRA DE OURO: Concatena SOMENTE se um dos dois for string
+            if (isS1String || isS2String) {
+                if (!isS1String) s1 = to_string(children[0]->getIntValue()); // ou getDoubleValue se preferir precisão
+                if (!isS2String) s2 = to_string(children[1]->getIntValue());
+                return s1 + s2;
             }
-            return "";
+            
+            // Se NENHUM for string, faz a soma numérica e converte o resultado
+            // Isso garante 15 + 25 = 40, e depois vira "40" para exibição
+            double val = this->getDoubleValue(); 
+            // Remove zeros decimais desnecessários se for inteiro
+            if (val == (int)val) return to_string((int)val);
+            return to_string(val);
         }
+        return "";
+    }
+
 };
 
 class PrintSeq: public Node {
@@ -746,7 +783,7 @@ private:
         if (dynamic_cast<CompOp*>(n)) return "bool";
 
         if (dynamic_cast<BinaryOp*>(n)) {
-            return "not_bool"; 
+            return "expr"; 
         }
 
         Load* load = dynamic_cast<Load*>(n);
@@ -764,13 +801,42 @@ private:
         return "unknown";
     }
 
+    bool containsNonStringVariables(Node* n) {
+        Load* load = dynamic_cast<Load*>(n);
+        if (load) {
+            if (declaredVars.count(load->getName())) {
+                string type = declaredVars[load->getName()];
+                if (type != "string") return true; 
+            }
+            return false;
+        }
+
+        LoadVector* loadVec = dynamic_cast<LoadVector*>(n);
+        if (loadVec) {
+            if (declaredVars.count(loadVec->getName())) {
+                string type = declaredVars[loadVec->getName()];
+                if (type != "string") return true;
+            }
+            return false;
+        }
+
+        BinaryOp* bin = dynamic_cast<BinaryOp*>(n);
+        if (bin) {
+            bool leftBad = containsNonStringVariables(bin->getChildren()[0]);
+            bool rightBad = containsNonStringVariables(bin->getChildren()[1]);
+            return leftBad || rightBad;
+        }
+
+        return false;
+    }
+
 public:
     void check(Node *n){
         for(Node *c : n->getChildren()){
             check(c);
         } 
 
-        VarDecl decl = dynamic_cast<VarDecl>(n);
+        VarDecl *decl = dynamic_cast<VarDecl*>(n);
         if (decl != NULL){
             if (declaredVars.count(decl->getName()) > 0) {
                 cerr << "Erro Semantico: Variavel '" << decl->getName() << "' ja foi declarada anteriormente.\n";
@@ -779,7 +845,7 @@ public:
             }
         }
 
-        VectorDecl vecDecl = dynamic_cast<VectorDecl>(n);
+        VectorDecl *vecDecl = dynamic_cast<VectorDecl*>(n);
         if (vecDecl != NULL){
             if (declaredVars.count(vecDecl->getName()) > 0) {
                 cerr << "Erro: Array '" << vecDecl->getName() << "' ja declarado.\n";
@@ -789,14 +855,14 @@ public:
             }
         }
 
-        Load load = dynamic_cast<Load>(n);
+        Load *load = dynamic_cast<Load*>(n);
         if (load != NULL){
             if (declaredVars.count(load->getName()) == 0) {
                 cerr << "Erro Semantico (Linha " << load->getLineNo() << "): Variavel '" << load->getName() << "' usada mas nao declarada.\n";
             }
         }
         
-        LoadVector loadVec = dynamic_cast<LoadVector>(n);
+        LoadVector *loadVec = dynamic_cast<LoadVector*>(n);
         if (loadVec != NULL){
             if (declaredVars.count(loadVec->getName()) == 0) {
                 cerr << "Erro: Tentativa de ler array '" << loadVec->getName() << "' nao declarado.\n";
@@ -813,31 +879,38 @@ public:
             }
         }
 
-        Store store = dynamic_cast<Store>(n);
+        Store *store = dynamic_cast<Store*>(n);
         if (store != NULL){
             string varName = store->getName();
              if (declaredVars.count(varName) == 0) {
                 cerr << "Erro Semantico (Linha " << store->getLineNo() << "): Tentativa de atribuir valor a '" << varName << "' que nao foi declarada.\n";
             } else {
                 string varType = declaredVars[varName];
-                
-                bool isBoolTarget = (varType == "bool" || varType == "boolean" || varType == "bl");
 
-                if (isBoolTarget) {
+                if (varType == "string") {
+                    if (!store->getChildren().empty()) {
+                        Node* expr = store->getChildren()[0];
+                        if (containsNonStringVariables(expr)) {
+                            cerr << "Erro Semantico (Linha " << store->getLineNo() << "): "
+                                 << "Variavel string '" << varName << "' nao pode receber variaveis de outros tipos (apenas strings ou literais).\n";
+                        }
+                    }
+                }
+
+                else if (varType == "bool" || varType == "boolean" || varType == "bl") {
                     if (!store->getChildren().empty()) {
                         Node* expr = store->getChildren()[0];
                         string exprType = inferType(expr);
-
                         if (exprType != "bool") {
                             cerr << "Erro Semantico (Linha " << store->getLineNo() << "): "
-                                 << "Variavel booleana '" << varName << "' so pode receber NOTTHELIES ou NOTTHETRUTH (ou expressoes booleanas).\n";
+                                 << "Variavel booleana '" << varName << "' so pode receber booleanos.\n";
                         }
                     }
                 }
             }
         }
 
-        StoreVector storeVec = dynamic_cast<StoreVector>(n);
+        StoreVector *storeVec = dynamic_cast<StoreVector*>(n);
         if (storeVec != NULL){
             string varName = storeVec->getName();
             if (declaredVars.count(varName) == 0) {
@@ -848,23 +921,28 @@ public:
                     int idx = storeVec->getIndex();
                     if (idx < 0 || idx >= size) {
                         cerr << "Erro Semantico (Linha " << storeVec->getLineNo() << "): "
-                             << "Indice " << idx << " fora dos limites do vetor '" << varName 
-                             << "' (Tamanho: " << size << ").\n";
+                             << "Indice " << idx << " fora dos limites.\n";
                     }
                 }
 
                 string varType = declaredVars[varName];
-                bool isBoolTarget = (varType == "bool" || varType == "boolean" || varType == "bl");
 
-                if (isBoolTarget) {
-                   
+                if (varType == "string") {
+                    if (!storeVec->getChildren().empty()) {
+                        Node* expr = storeVec->getChildren()[0];
+                        if (containsNonStringVariables(expr)) {
+                            cerr << "Erro Semantico (Linha " << storeVec->getLineNo() << "): "
+                                 << "Vetor string '" << varName << "' nao pode receber variaveis de outros tipos.\n";
+                        }
+                    }
+                }
+                else if (varType == "bool" || varType == "boolean" || varType == "bl") {
                     if (!storeVec->getChildren().empty()) {
                         Node* expr = storeVec->getChildren()[0];
                         string exprType = inferType(expr);
-
                         if (exprType != "bool") {
                             cerr << "Erro Semantico (Linha " << storeVec->getLineNo() << "): "
-                                << "Vetor booleano '" << varName << "' so pode receber valores booleanos.\n";
+                                << "Vetor booleano '" << varName << "' so pode receber booleanos.\n";
                         }
                     }
                 }

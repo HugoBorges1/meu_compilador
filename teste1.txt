@@ -1,13 +1,23 @@
-it inteiroVet ]3[
+st stringVet ]3[
 
-RE { it @ inteiroVet]2[} AD
+RE { st @ stringVet]2[} AD
 
-I inteiroVet]2[ MAIOR_QUE 10 F |
-    inteiroVet ]1[ = 10 + inteiroVet ]2[
+I stringVet]2[ MAIOR_QUE 10 F |
+    stringVet ]1[ = 10 + stringVet ]2[
 | EL 
-    inteiroVet ]0[ = 10 + inteiroVet ]2[ 
+    stringVet ]0[ = 10 / stringVet ]2[ 
 SE
 
-RE { it @ inteiroVet ]0[ } AD
+stringVet ]1[ = 10 - stringVet ]2[
 
-SH {%inteiroVet ]0[\} OW
+RE { st @ stringVet ]0[ } AD
+
+stringVet ]1[ = 10
+
+stringVet ]0[ = amordasilva + stringVet ]1[
+
+SH {%stringVet ]0[\} OW
+
+SH {%stringVet ]1[\} OW
+
+SH {%stringVet ]2[\} OW
