@@ -1069,5 +1069,6 @@ public:
         for(auto const& [name, type] : declaredVars) {
             cout << name << " (" << type << ")\n";
         }
+        cout << "\n\n";
     }
 };
