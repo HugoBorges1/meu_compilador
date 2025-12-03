@@ -87,7 +87,7 @@ class ConstInteger: public Node {
         double getDoubleValue() override { 
             return (double)value; 
         }
-}; // Fechamento da classe APENAS AQUI
+}; 
 
 class ConstDouble: public Node {
     protected:
@@ -249,14 +249,16 @@ class Load: public Node {
     }
 
     double getDoubleValue() override { 
-    // Se for Double, retorna o valor double
-    if (hasValue && isDouble) return currentDouble;
+        if (hasValue && isDouble) {
+            return currentDouble;
+        }
+        
+        if (hasValue && !isString && !isBool) {
+            return (double)currentVal;
+        }
     
-    // CORREÇÃO: Se for Int, converte e retorna o valor int como double
-    if (hasValue && !isString && !isBool) return (double)currentVal;
-    
-    return 0.0; 
-}
+        return 0.0; 
+    }
 };
 
 class Store: public Node {
@@ -334,10 +336,21 @@ class StoreVector: public Node {
 
         string astLabel() override {
             string label = "StoreVector " + name;
-            if (hasIndex) label += " ]" + to_string(index) + "[";
-            if (readCount > 0) label += " | changedByRead(" + to_string(readCount) + ")";
-            if (loopChangeCount > 0) label += " | changedByFor(" + to_string(loopChangeCount) + ")";
-            if (ifChangeCount > 0) label += " | changedByIF(" + to_string(ifChangeCount) + ")";
+            if (hasIndex) {
+                label += " ]" + to_string(index) + "[";
+            }
+
+            if (readCount > 0) {
+                label += " | changedByRead(" + to_string(readCount) + ")";
+            }
+
+            if (loopChangeCount > 0) {
+                label += " | changedByFor(" + to_string(loopChangeCount) + ")";
+            }
+
+            if (ifChangeCount > 0) {
+                label += " | changedByIF(" + to_string(ifChangeCount) + ")";
+            }
 
             return label;
         }
@@ -464,22 +477,26 @@ class LoadVector: public Node {
             return resolvedIndex; 
         }
 
-        /* Em nodes.h, classe LoadVector */
         int getIntValue() override { 
             return (hasInfo && !isString && !isDouble && !isBool) ? resolvedInt : 0;
         }
+
         string getStringValue() override { 
             return (hasInfo && isString) ? resolvedStr : ""; 
         }
+
         double getDoubleValue() override { 
-    // Se for Double
-        if (hasInfo && isDouble) return resolvedDouble;
-        
-        // CORREÇÃO: Se for Int, converte
-        if (hasInfo && !isString && !isBool) return (double)resolvedInt;
-        
-        return 0.0; 
-}
+
+            if (hasInfo && isDouble) {
+                return resolvedDouble;
+            }
+
+            if (hasInfo && !isString && !isBool){
+                return (double)resolvedInt;
+            }
+                
+            return 0.0; 
+        }
 };
 
 class BinaryOp: public Node {
@@ -525,30 +542,30 @@ class BinaryOp: public Node {
 
         string getStringValue() override {
         if (oper == '+') {
-            // Tenta pegar string dos filhos
+
             string s1 = children[0]->getStringValue();
             string s2 = children[1]->getStringValue();
             
-            // Verifica se os filhos são realmente strings (não vazios)
+
             bool isS1String = (s1 != "");
             bool isS2String = (s2 != "");
 
-            // REGRA DE OURO: Concatena SOMENTE se um dos dois for string
+
             if (isS1String || isS2String) {
-                if (!isS1String) s1 = to_string(children[0]->getIntValue()); // ou getDoubleValue se preferir precisão
+                if (!isS1String) s1 = to_string(children[0]->getIntValue()); 
                 if (!isS2String) s2 = to_string(children[1]->getIntValue());
                 return s1 + s2;
             }
-            
-            // Se NENHUM for string, faz a soma numérica e converte o resultado
-            // Isso garante 15 + 25 = 40, e depois vira "40" para exibição
             double val = this->getDoubleValue(); 
-            // Remove zeros decimais desnecessários se for inteiro
+
             if (val == (int)val) return to_string((int)val);
             return to_string(val);
         }
         return "";
     }
+
+    char getOper() { return oper; }
+
 
 };
 
@@ -655,8 +672,10 @@ class CompOp: public Node {
         }
 
         string astLabel() override {
-            return "compare [" + oper + "]";
+            return "Compare [" + oper + "]";
         }
+
+        string getOper() { return oper; }
 };
 
 class IfCondition: public Node {
@@ -677,7 +696,7 @@ class BlockTrue: public Node {
             this->append(stmts);
         }
         string astLabel() override {
-            return "True Block";
+            return "TrueBlock";
         }
 };
 
@@ -688,7 +707,7 @@ class BlockFalse: public Node {
             this->append(stmts);
         }
         string astLabel() override {
-            return "Else Block";
+            return "ElseBlock";
         }
 };
 
@@ -734,7 +753,7 @@ class LoopStmt: public Node {
         }
 
         string astLabel() override {
-            return "LOOP";
+            return "whileLOOP";
         }
 };
 
@@ -767,54 +786,55 @@ class Program: public Node {
             cout << "}\n";
         }
 
-            string astLabel() override {
-                return "Program";
-            }
+        string astLabel() override {
+            return "Program";
+        }
 };
 
 class SemanticVarDecl {
-private:
-    map<string, string> declaredVars;
-    map<string, int> declaredArraySizes; 
+    private:
+        map<string, string> declaredVars;
+        map<string, int> declaredArraySizes; 
 
     string inferType(Node* n) {
-        // Tipos base
         if (dynamic_cast<ConstBoolean*>(n)) return "bool";
         if (dynamic_cast<ConstInteger*>(n)) return "int";
         if (dynamic_cast<ConstDouble*>(n)) return "float";
         if (dynamic_cast<ConstString*>(n)) return "string";
         if (dynamic_cast<CompOp*>(n)) return "bool";
-
-        // Inferência recursiva para Operações Binárias (+, -, *, /)
         if (dynamic_cast<BinaryOp*>(n)) {
             BinaryOp* bin = dynamic_cast<BinaryOp*>(n);
-            // Verifica os dois lados da operação
             string leftType = inferType(bin->getChildren()[0]);
             string rightType = inferType(bin->getChildren()[1]);
 
-            // Se qualquer lado for string, o resultado é string (concatenação)
-            if (leftType == "string" || rightType == "string") return "string";
+            if (leftType == "string" || rightType == "string") { 
+                return "string"; 
+            }
             
-            // Se qualquer lado for float, o resultado da expressão é float
-            if (leftType == "float" || rightType == "float") return "float";
+            if (leftType == "float" || rightType == "float") {
+                return "float"; 
+            }
             
-            // Se ambos forem int, continua int
-            if (leftType == "int" && rightType == "int") return "int";
+            if (leftType == "int" && rightType == "int") {
+                return "int"; 
+            }
             
             return "unknown";
         }
 
-        // Variáveis Simples
         Load* load = dynamic_cast<Load*>(n);
         if (load) {
-            if (declaredVars.count(load->getName())) return declaredVars[load->getName()];
+            if (declaredVars.count(load->getName())) {
+                return declaredVars[load->getName()];
+            }
             return "unknown";
         }
 
-        // Vetores
         LoadVector* loadVec = dynamic_cast<LoadVector*>(n);
         if (loadVec) {
-            if (declaredVars.count(loadVec->getName())) return declaredVars[loadVec->getName()];
+            if (declaredVars.count(loadVec->getName())) {
+                return declaredVars[loadVec->getName()];
+            }
             return "unknown";
         }
 
@@ -864,6 +884,55 @@ public:
             }
         }
 
+        BinaryOp *bin = dynamic_cast<BinaryOp*>(n);
+        if (bin != NULL) {
+            string t1 = inferType(bin->getChildren()[0]);
+            string t2 = inferType(bin->getChildren()[1]);
+
+            if (t1 == "string" || t2 == "string") {
+                if (bin->getOper() != '+') {
+                    cerr << "Erro Semantico (Linha " << bin->getLineNo() << "): "
+                         << "Operacao invalida. Strings so suportam concatenacao (+).\n";
+                }
+            }
+        }
+
+        CompOp *comp = dynamic_cast<CompOp*>(n);
+        if (comp != NULL) {
+            string t1 = inferType(comp->getChildren()[0]);
+            string t2 = inferType(comp->getChildren()[1]);
+
+            if ((t1 == "string" && t2 != "string") || (t1 != "string" && t2 == "string")) {
+                cerr << "Erro Semantico (Linha " << comp->getLineNo() << "): "
+                     << "Comparacao invalida entre " << t1 << " e " << t2 << ".\n";
+            }
+            
+            if ((t1 == "bool" || t2 == "bool") && 
+                 comp->getOper() != "IGUAL_A" && 
+                 comp->getOper() != "DIFERENTE_DE" &&
+                 comp->getOper() != "OU" &&     
+                 comp->getOper() != "E")        
+            {
+                 cerr << "Erro Semantico (Linha " << comp->getLineNo() << "): "
+                      << "Booleanos so podem ser comparados com IGUAL ou DIFERENTE.\n";
+            }
+        }
+
+
+        if (bin != NULL && bin->getOper() == '/') {
+            Node* rightChild = bin->getChildren()[1];
+            
+            ConstInteger* constInt = dynamic_cast<ConstInteger*>(rightChild);
+            if (constInt && constInt->getIntValue() == 0) {
+                cerr << "Erro Semantico (Linha " << bin->getLineNo() << "): Divisao por zero detectada.\n";
+            }
+
+            ConstDouble* constDbl = dynamic_cast<ConstDouble*>(rightChild);
+            if (constDbl && constDbl->getDoubleValue() == 0.0) {
+                 cerr << "Erro Semantico (Linha " << bin->getLineNo() << "): Divisao por zero detectada.\n";
+            }
+        }
+
         VectorDecl *vecDecl = dynamic_cast<VectorDecl*>(n);
         if (vecDecl != NULL){
             if (declaredVars.count(vecDecl->getName()) > 0) {
@@ -906,20 +975,17 @@ public:
             } else {
                 string varType = declaredVars[varName];
                 
-                // Pega a expressão que está sendo atribuída
                 Node* expr = (!store->getChildren().empty()) ? store->getChildren()[0] : NULL;
 
-                // --- LÓGICA DE COERÇÃO INT <---
                 if (varType == "int" && expr != NULL) {
                     string exprType = inferType(expr);
                     if (exprType == "float") {
                         cerr << "Warning (Linha " << store->getLineNo() << "): "
                              << "Atribuicao de float para a variavel inteira '" << varName 
                              << "'. O valor sera truncado.\n";
-                        // O truncamento ocorre automaticamente na execução do C++ ao salvar em int
+                        
                     }
                 }
-                // ------------------------------
 
                 if (varType == "string") {
                     if (expr && containsNonStringVariables(expr)) {
@@ -947,7 +1013,6 @@ public:
             if (declaredVars.count(varName) == 0) {
                 cerr << "Erro: Tentativa de atribuir em array '" << varName << "' nao declarado.\n";
             } else {
-                // 1. Verificação de Limites (Bounds Checking) - MANTIDO IGUAL
                 if (declaredArraySizes.count(varName) > 0) {
                     int size = declaredArraySizes[varName];
                     int idx = storeVec->getIndex();
@@ -959,10 +1024,8 @@ public:
 
                 string varType = declaredVars[varName];
 
-                // 2. Extraímos a expressão para não repetir código
                 Node* expr = (!storeVec->getChildren().empty()) ? storeVec->getChildren()[0] : NULL;
 
-                // --- NOVA IMPLEMENTAÇÃO: Coerção Float -> Int ---
                 if (varType == "int" && expr != NULL) {
                     string exprType = inferType(expr);
                     
@@ -972,9 +1035,7 @@ public:
                              << "'. O valor sera truncado.\n";
                     }
                 }
-                // ------------------------------------------------
 
-                // 3. Verificações de String (Erro)
                 else if (varType == "string") {
                     if (expr != NULL) {
                         if (containsNonStringVariables(expr)) {
@@ -984,7 +1045,6 @@ public:
                     }
                 }
                 
-                // 4. Verificações de Boolean (Erro)
                 else if (varType == "bool" || varType == "boolean" || varType == "bl") {
                     if (expr != NULL) {
                         string exprType = inferType(expr);

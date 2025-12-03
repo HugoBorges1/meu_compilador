@@ -7,3 +7,5 @@ RE { st @ Nome_1 st @ Nome_2 } AD
 I Nome_1 IGUAL_A Nome_2 F |
 	SH {O nome %Nome_1\ corresponde ao nome %Nome_2\ } OW
 | EL SH {O nome %Nome_1\ nao corresponde ao nome %Nome_2\ } OW SE
+
+SH {%Nome_1\} OW

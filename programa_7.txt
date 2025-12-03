@@ -1,5 +1,12 @@
-it var1
+it var_int
+it var_int
 
-var1 = 10 + 2;25
+st var_string
+var_string = 123
 
-SH { %var1\} OW
+bl var_bool
+var_bool = 10 + 5
+
+var_nao_existe = 10
+
+SH { %outra_var_nao_existe\ } OW

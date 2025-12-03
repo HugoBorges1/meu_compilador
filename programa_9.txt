@@ -1,0 +1,19 @@
+it cont
+cont = 10 / 0
+
+bl var_bool
+ft var_float
+
+var_float = 5;5 / 0;0
+
+st nome
+nome = Ola - Mundo
+
+I var_string MAIOR_QUE 10 F |
+    SH { Isso nao deve rodar } OW
+|
+
+I 10 MAIOR_QUE var_float F |
+    var_bool = true
+    SH { Erro var_bool } OW
+|

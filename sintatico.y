@@ -131,20 +131,15 @@ decl : DECL_ST IDENT[name] {
 }
 
 atrib : IDENT[id] '=' arit[at] {
-     // A lógica antiga confiava apenas no valor. A nova confia na DECLARAÇÃO.
+
      if (inside_loop == 0 && inside_if == 0) {
           if (declared_strings.count($id)) {
-               // É String: Pega o valor texto
                memory_string[$id] = $at->getStringValue();
           } 
           else if (declared_floats.count($id)) {
-               // É Float: Pega o valor double
                memory_float[$id] = $at->getDoubleValue();
           }
           else {
-               // É Int (padrão): Força truncamento (Coerção)
-               // Usamos getDoubleValue() e castamos para int para somar com precisão antes de truncar
-               // Ex: 1.5 + 1.5 = 3.0 -> 3 (Se usasse getIntValue direto, seria 1 + 1 = 2)
                memory_int[$id] = (int)$at->getDoubleValue(); 
           }
      }
@@ -188,7 +183,6 @@ atrib : IDENT[id] ']'indice[idx]'[' '=' arit[at] {
      int l = vec_loop_counts[$id][indexVal];
      int i = vec_if_counts[$id][indexVal];
 
-     // 2. Prepara os valores
      string strVal = $at->getStringValue();
 
      if (strVal == "" && memory_vector_string.count($id)) { 
@@ -212,7 +206,6 @@ atrib : IDENT[id] ']'indice[idx]'[' '=' arit[at] {
 
      $$ = new StoreVector($id, $idx, $at, indexVal, true, r, l, i);
 
-     // 5. Incrementa contadores para o FUTURO (Índice específico)
      if (inside_loop > 0) vec_loop_counts[$id][indexVal]++;
      if (inside_if > 0) vec_if_counts[$id][indexVal]++;
 }
@@ -255,9 +248,11 @@ atrib : IDENT[id] ']'indice[idx]'[' '=' BOOL_F {
 
 safeblock : { inside_loop++; } comblock[bc] { inside_loop--; $$ = $bc; } ;
 
-loop : LOOP_S INTEGER[lim] ':' DECL_IT IDENT[id] ICR LOOP_E '|' safeblock[bc] '|' {
-     $$ = new ForStmt($lim, $id, $bc);
-}
+loop : LOOP_S INTEGER[lim] ':' DECL_IT IDENT[id] ICR LOOP_E '|' { 
+        declared_vars.insert($id); 
+} safeblock[bc] '|' {
+          $$ = new ForStmt($lim, $id, $bc);
+ }
 
 loop : LOOP_S exprlog[exl] LOOP_E '|' safeblock[bc] '|' {
      $$ = new LoopStmt($exl, $bc);
@@ -658,34 +653,27 @@ factor : IDENT[id] {
 factor : IDENT[id] ']'indice[idx]'[' {
      int indexVal = $idx->getIntValue();
      
-     // Recupera contadores
      int reads = vec_read_counts[$id][indexVal];
      int loops = vec_loop_counts[$id][indexVal];
      int ifs = vec_if_counts[$id][indexVal];
 
-     // Verifica INT
-     /* No sintatico.y */
      if (memory_vector_int.count($id) && memory_vector_int[$id].count(indexVal)) {
           int val = memory_vector_int[$id][indexVal];
-          /* Aqui está o segredo: Passar 'val' e 'true' */
+
           $$ = new LoadVector($id, $idx, indexVal, val, true, reads, loops, ifs);
      } 
-          // Verifica FLOAT
      else if (memory_vector_float.count($id) && memory_vector_float[$id].count(indexVal)) {
           double val = memory_vector_float[$id][indexVal];
           $$ = new LoadVector($id, $idx, indexVal, val, true, reads, loops, ifs);
      }
-     // Verifica STRING
      else if (memory_vector_string.count($id) && memory_vector_string[$id].count(indexVal)) {
           string val = memory_vector_string[$id][indexVal];
           $$ = new LoadVector($id, $idx, indexVal, val, true, reads, loops, ifs);
      }
-     // Verifica BOOL
      else if (memory_vector_bool.count($id) && memory_vector_bool[$id].count(indexVal)) {
           bool val = memory_vector_bool[$id][indexVal];
           $$ = new LoadVector($id, $idx, indexVal, val, true, reads, loops, ifs);
      }
-     // Sem valor (Zero)
      else {
           $$ = new LoadVector($id, $idx, indexVal, 0, false, reads, loops, ifs);
      }

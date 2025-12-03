@@ -9,4 +9,6 @@ LO 3 : it a++ OP |
 
 media = total/3
 
+media = 10;5
+
 SH {Media calculada %media\} OW

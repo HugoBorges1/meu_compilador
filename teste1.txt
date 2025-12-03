@@ -1,5 +1,0 @@
-it var1
-
-var1 = 10 + 2;25
-
-SH { %var1\} OW
